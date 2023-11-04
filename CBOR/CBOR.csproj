@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard1.0; net6.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0; net6.0</TargetFrameworks>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Version>5.0-alpha1</Version>
     <Owners>Peter Occil</Owners>
@@ -61,6 +61,7 @@ Note that after version 4.5x, the CBOR library's repository will stop including 
 
 <PackageReference Include="PeterO.Numbers" Version="1.8.2" />
 
-<PackageReference Include='PeterO.DataUtilities' Version='1.1.0'/>
-<PackageReference Include='Microsoft.CodeAnalysis.NetAnalyzers' PrivateAssets='All' Version='7.0.3'/></ItemGroup>
+<PackageReference Include="PeterO.DataUtilities" Version="1.1.0" />
+<PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" PrivateAssets="All" Version="7.0.3" />
+<PackageReference Include="System.Collections.Immutable" Version="7.0.0" /></ItemGroup>
                   </Project>

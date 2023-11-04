@@ -8,6 +8,7 @@ https://creativecommons.org/publicdomain/zero/1.0/
  */
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
@@ -263,7 +264,7 @@ namespace PeterO.Cbor {
         throw new ArgumentException("arbitrary-precision integer does not " +
           "fit major type 0 or 1");
       }
-      if (type == CBORObjectTypeArray && !(item is IList<CBORObject>)) {
+      if (type == CBORObjectTypeArray && !(item is ImmutableArray<CBORObject>)) {
         throw new InvalidOperationException();
       }
 #endif
@@ -279,7 +280,7 @@ namespace PeterO.Cbor {
     /// <value>The number of keys in this map, or the number of items in
     /// this array, or 0 if this item is neither an array nor a
     /// map.</value>
-    public int Count => (this.Type == CBORType.Array) ? this.AsList().Count :
+    public int Count => (this.Type == CBORType.Array) ? this.AsImmArray().Length :
           ((this.Type == CBORType.Map) ? this.AsMap().Count : 0);
 
     /// <summary>Gets the last defined tag for this CBOR data item, or -1
@@ -471,11 +472,9 @@ namespace PeterO.Cbor {
           IDictionary<CBORObject, CBORObject> dict = this.AsMap();
           return PropertyMap.ReadOnlyValues(dict);
         }
-        if (this.Type == CBORType.Array) {
-          IList<CBORObject> list = this.AsList();
-          return new
-            System.Collections.ObjectModel.ReadOnlyCollection<CBORObject>(
-              list);
+        if (Type == CBORType.Array) {
+          ImmutableArray<CBORObject> list = this.AsImmArray();
+          return list;
         }
         throw new InvalidOperationException("Not a map or array");
       }
@@ -526,8 +525,8 @@ namespace PeterO.Cbor {
       get
       {
         if (this.Type == CBORType.Array) {
-          IList<CBORObject> list = this.AsList();
-          return index < 0 || index >= list.Count ? throw new
+          ImmutableArray<CBORObject> list = this.AsImmArray();
+          return index < 0 || index >= list.Length ? throw new
 ArgumentOutOfRangeException(nameof(index)) : list[index];
         }
         if (this.Type == CBORType.Map) {
@@ -540,24 +539,24 @@ ArgumentOutOfRangeException(nameof(index)) : list[index];
         throw new InvalidOperationException("Not an array or map");
       }
 
-      set {
-        if (this.Type == CBORType.Array) {
-          if (value == null) {
-            throw new ArgumentNullException(nameof(value));
-          }
-          IList<CBORObject> list = this.AsList();
-          if (index < 0 || index >= list.Count) {
-            throw new ArgumentOutOfRangeException(nameof(index));
-          }
-          list[index] = value;
-        } else if (this.Type == CBORType.Map) {
-          IDictionary<CBORObject, CBORObject> map = this.AsMap();
-          var key = CBORObject.FromInt32(index);
-          map[key] = value;
-        } else {
-          throw new InvalidOperationException("Not an array or map");
-        }
-      }
+      //set {
+      //  if (this.Type == CBORType.Array) {
+      //    if (value == null) {
+      //      throw new ArgumentNullException(nameof(value));
+      //    }
+      //    ImmutableArray<CBORObject> list = this.AsImmArray();
+      //    if (index < 0 || index >= list.Length) {
+      //      throw new ArgumentOutOfRangeException(nameof(index));
+      //    }
+      //    list[index] = value;
+      //  } else if (this.Type == CBORType.Map) {
+      //    IDictionary<CBORObject, CBORObject> map = this.AsMap();
+      //    var key = CBORObject.FromInt32(index);
+      //    map[key] = value;
+      //  } else {
+      //    throw new InvalidOperationException("Not an array or map");
+      //  }
+      //}
     }
 
     /// <summary>Gets the value of a CBOR object by integer index in this
@@ -584,8 +583,8 @@ defaultValue) {
           return defaultValue;
         }
         int index = cborkey.AsNumber().ToInt32Checked();
-        IList<CBORObject> list = this.AsList();
-        return (index < 0 || index >= list.Count) ? defaultValue :
+        ImmutableArray<CBORObject > list = this.AsImmArray();
+        return (index < 0 || index >= list.Length) ? defaultValue :
           list[index];
       }
       if (this.Type == CBORType.Map) {
@@ -615,8 +614,8 @@ defaultValue) {
     public CBORObject GetOrDefault(int key, CBORObject defaultValue) {
       if (this.Type == CBORType.Array) {
         int index = key;
-        IList<CBORObject> list = this.AsList();
-        return (index < 0 || index >= list.Count) ? defaultValue :
+        ImmutableArray<CBORObject> list = this.AsImmArray();
+        return (index < 0 || index >= list.Length) ? defaultValue :
           list[index];
       }
       if (this.Type == CBORType.Map) {
@@ -668,10 +667,6 @@ defaultValue) {
     /// of the array.</exception>
     /// <exception cref='InvalidOperationException'>This object is not a
     /// map or an array.</exception>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
-        "Microsoft.Design",
-        "CA1043",
-        Justification = "Represents a logical data store")]
     public CBORObject this[CBORObject key]
     {
       get
@@ -700,7 +695,7 @@ defaultValue) {
           if (!key.AsNumber().CanFitInInt32()) {
             throw new ArgumentOutOfRangeException(nameof(key));
           }
-          IList<CBORObject> list = this.AsList();
+          IList<CBORObject> list = this.AsImmArray();
           int index = key.AsNumber().ToInt32Checked();
           return index < 0 || index >= list.Count ? throw new
 ArgumentOutOfRangeException(nameof(key)) : list[index];
@@ -727,7 +722,7 @@ ArgumentOutOfRangeException(nameof(key)) : list[index];
           if (!key.AsNumber().CanFitInInt32()) {
             throw new ArgumentOutOfRangeException(nameof(key));
           }
-          IList<CBORObject> list = this.AsList();
+          IList<CBORObject> list = this.AsImmArray();
           int index = key.AsNumber().ToInt32Checked();
           if (index < 0 || index >= list.Count) {
             throw new ArgumentOutOfRangeException(nameof(key));
@@ -810,7 +805,7 @@ ArgumentOutOfRangeException(nameof(key)) : list[index];
     /// CBOR object in the data was read only partly.</exception>
     /// <exception cref='ArgumentNullException'>The parameter <paramref
     /// name='data'/> is null.</exception>
-    public static CBORObject[] DecodeSequenceFromBytes(byte[] data) {
+    public static ImmutableArray<CBORObject> DecodeSequenceFromBytes(byte[] data) {
       return DecodeSequenceFromBytes(data, AllowEmptyOptions);
     }
 
@@ -834,7 +829,7 @@ ArgumentOutOfRangeException(nameof(key)) : list[index];
     /// <exception cref='ArgumentNullException'>The parameter <paramref
     /// name='data'/> is null, or the parameter <paramref name='options'/>
     /// is null.</exception>
-    public static CBORObject[] DecodeSequenceFromBytes(byte[] data,
+    public static ImmutableArray<CBORObject> DecodeSequenceFromBytes(byte[] data,
       CBOREncodeOptions options) {
       if (data == null) {
         throw new ArgumentNullException(nameof(data));
@@ -843,13 +838,13 @@ ArgumentOutOfRangeException(nameof(key)) : list[index];
         throw new ArgumentNullException(nameof(options));
       }
       if (data.Length == 0) {
-        return new CBORObject[0];
+        return ImmutableArray.Create<CBORObject>();
       }
       CBOREncodeOptions opt = options;
       if (!opt.AllowEmpty) {
         opt = new CBOREncodeOptions(opt.ToString() + ";allowempty=1");
       }
-      var cborList = new List<CBORObject>();
+      var cborList = ImmutableArray.CreateBuilder<CBORObject>();
       using (var ms = new MemoryStream(data)) {
         while (true) {
           CBORObject obj = Read(ms, opt);
@@ -859,7 +854,7 @@ ArgumentOutOfRangeException(nameof(key)) : list[index];
           cborList.Add(obj);
         }
       }
-      return cborList.ToArray();
+      return cborList.ToImmutable();
     }
 
     /// <summary>Generates a list of CBOR objects from an array of bytes in
@@ -2476,11 +2471,15 @@ FromString(strValue);
       if (array == null) {
         return Null;
       }
-      IList<CBORObject> list = new List<CBORObject>();
-      foreach (CBORObject cbor in array) {
-        list.Add(cbor);
-      }
-      return new CBORObject(CBORObjectTypeArray, list);
+      return new CBORObject(CBORObjectTypeArray, ImmutableArray.CreateRange(array));
+    }
+
+    /// <summary>Generates a CBOR object from an immutable array of CBOR
+    /// objects.</summary>
+    /// <param name='array'>An immutable array of CBOR objects.</param>
+    /// <returns>A CBOR object consisting of an immutable array of CBORObjects.</returns>
+    public static CBORObject FromCBORImmArray(ImmutableArray<CBORObject> array) {
+      return new CBORObject(CBORObjectTypeArray, array);
     }
 
     /// <summary>Generates a CBOR object from an array of CBOR
@@ -2509,12 +2508,11 @@ FromCBORArray(array);
       if (array == null) {
         return CBORObject.Null;
       }
-      IList<CBORObject> list = new List<CBORObject>(array.Length ==
-        Int32.MaxValue ? array.Length : (array.Length + 1));
+      ImmutableArray<CBORObject>.Builder list = ImmutableArray.CreateBuilder<CBORObject>(array.Length);
       foreach (int i in array) {
         list.Add(FromInt32(i));
       }
-      return new CBORObject(CBORObjectTypeArray, list);
+      return FromCBORImmArray(list.MoveToImmutable());
     }
 
     /// <summary>Generates a CBOR object from an array of 64-bit
@@ -2527,12 +2525,11 @@ FromCBORArray(array);
       if (array == null) {
         return CBORObject.Null;
       }
-      IList<CBORObject> list = new List<CBORObject>(array.Length ==
-        Int32.MaxValue ? array.Length : (array.Length + 1));
+      ImmutableArray<CBORObject>.Builder list = ImmutableArray.CreateBuilder<CBORObject>(array.Length);
       foreach (long i in array) {
         list.Add(FromInt64(i));
       }
-      return new CBORObject(CBORObjectTypeArray, list);
+      return FromCBORImmArray(list.MoveToImmutable());
     }
 
     /// <summary>Generates a CBORObject from an arbitrary object. See the
@@ -2949,16 +2946,16 @@ ArgumentNullException(nameof(mapper)) : FromObject(obj, options, mapper, 0);
         return PropertyMap.FromArray(obj, options, mapper, depth);
       }
       if (obj is System.Collections.IEnumerable) {
-        objret = CBORObject.NewArray();
+        ImmutableArray<CBORObject>.Builder objret2 = ImmutableArray.CreateBuilder<CBORObject>(); // Named objret2 because of CSharp scoping issues. Replace with pattern matching to see if they go away.
         foreach (object element in (System.Collections.IEnumerable)obj) {
-          _ = objret.Add(
+          objret2.Add(
             CBORObject.FromObject(
               element,
               options,
               mapper,
               depth + 1));
         }
-        return objret;
+        return FromCBORImmArray(objret2.ToImmutable());
       }
       if (obj is Enum) {
         return FromObject(PropertyMap.EnumToObjectAsInteger((Enum)obj));
@@ -4239,9 +4236,9 @@ FromJSONBytes(bytes, 0, bytes.Length, jsonoptions);
         output.Write(data, 0, data.Length);
         return;
       }
-      if (objValue is IList<CBORObject>) {
+      if (objValue is ImmutableArray<CBORObject>) {
         WriteObjectArray(
-          (IList<CBORObject>)objValue,
+          (ImmutableArray<CBORObject>)objValue,
           output,
           options);
         return;
@@ -4378,7 +4375,7 @@ FromJSONBytes(bytes, 0, bytes.Length, jsonoptions);
     /// </example>
     public CBORObject Add(CBORObject obj) {
       if (this.Type == CBORType.Array) {
-        IList<CBORObject> list = this.AsList();
+        ImmutableArray<CBORObject> list = this.AsImmArray();
         list.Add(obj);
         return this;
       }
@@ -4411,7 +4408,7 @@ FromJSONBytes(bytes, 0, bytes.Length, jsonoptions);
     [RequiresUnreferencedCode("Do not use in AOT or reflection-free contexts.")]
     public CBORObject Add(object obj) {
       if (this.Type == CBORType.Array) {
-        IList<CBORObject> list = this.AsList();
+        ImmutableArray<CBORObject> list = this.AsImmArray();
         list.Add(FromObject(obj));
         return this;
       }
@@ -5327,7 +5324,7 @@ CBORObjectTypeTextStringAscii)) {
               itemHashCode = CBORMapHashCode(this.AsMap());
               break;
             case CBORObjectTypeArray:
-              itemHashCode = CBORArrayHashCode(this.AsList());
+              itemHashCode = CBORArrayHashCode(this.AsImmArray());
               break;
             case CBORObjectTypeTextString:
             case CBORObjectTypeTextStringAscii:
@@ -5569,8 +5566,8 @@ CBORObjectTypeTextStringAscii)) {
     public CBORObject Insert(int index, object valueOb) {
       if (this.Type == CBORType.Array) {
         CBORObject mapValue;
-        IList<CBORObject> list = this.AsList();
-        if (index < 0 || index > list.Count) {
+        ImmutableArray<CBORObject> list = this.AsImmArray();
+        if (index < 0 || index > list.Length) {
           throw new ArgumentOutOfRangeException(nameof(index));
         }
         if (valueOb == null) {
@@ -5599,11 +5596,11 @@ CBORObjectTypeTextStringAscii)) {
     /// name='index'/> is not a valid index into this array.</exception>
     public CBORObject Insert(int index, CBORObject cborObj) {
       if (this.Type == CBORType.Array) {
-        IList<CBORObject> list = this.AsList();
-        if (index < 0 || index > list.Count) {
+        ImmutableArray<CBORObject> list = this.AsImmArray();
+        if (index < 0 || index > list.Length) {
           throw new ArgumentOutOfRangeException(nameof(index));
         }
-        list.Insert(
+        list.Insert( // TODO: alter the array
           index,
           cborObj);
       } else {
@@ -5618,7 +5615,7 @@ CBORObjectTypeTextStringAscii)) {
     /// CBOR array or CBOR map.</exception>
     public void Clear() {
       if (this.Type == CBORType.Array) {
-        IList<CBORObject> list = this.AsList();
+        ImmutableArray<CBORObject> list = this.AsImmArray(); // TODO: replace with an empty array
         list.Clear();
       } else if (this.Type == CBORType.Map) {
         IDictionary<CBORObject, CBORObject> dict = this.AsMap();
@@ -7043,8 +7040,8 @@ CBORObjectTypeTextStringAscii)) {
       return FixedObjects[value];
     }
 
-    private IList<CBORObject> AsList() {
-      return (IList<CBORObject>)this.ThisItem;
+    private ImmutableArray<CBORObject> AsImmArray() {
+      return (ImmutableArray<CBORObject>)ThisItem;
     }
 
     private IDictionary<CBORObject, CBORObject> AsMap() {
@@ -7052,16 +7049,16 @@ CBORObjectTypeTextStringAscii)) {
     }
 
     private static bool CBORArrayEquals(
-      IList<CBORObject> listA,
-      IList<CBORObject> listB) {
-      if (listA == null) {
+      ImmutableArray<CBORObject> listA,
+      ImmutableArray<CBORObject> listB) {
+      if (listA == null) { // TODO: remove if NRTs are enabled
         return listB == null;
       }
       if (listB == null) {
         return false;
       }
-      int listACount = listA.Count;
-      int listBCount = listB.Count;
+      int listACount = listA.Length;
+      int listBCount = listB.Length;
       if (listACount != listBCount) {
         return false;
       }
@@ -7075,12 +7072,12 @@ CBORObjectTypeTextStringAscii)) {
       return true;
     }
 
-    private static int CBORArrayHashCode(IList<CBORObject> list) {
+    private static int CBORArrayHashCode(ImmutableArray<CBORObject> list) {
       if (list == null) {
         return 0;
       }
       var ret = 19;
-      int count = list.Count;
+      int count = list.Length;
       unchecked
       {
         ret = (ret * 31) + count;
@@ -7349,16 +7346,16 @@ CBORObjectTypeTextStringAscii)) {
     }
 
     private static int ListCompare(
-      IList<CBORObject> listA,
-      IList<CBORObject> listB) {
+      ImmutableArray<CBORObject> listA,
+      ImmutableArray<CBORObject> listB) {
       if (listA == null) {
         return (listB == null) ? 0 : -1;
       }
       if (listB == null) {
         return 1;
       }
-      int listACount = listA.Count;
-      int listBCount = listB.Count;
+      int listACount = listA.Length;
+      int listBCount = listB.Length;
       // NOTE: Compare list counts to conform
       // to bytewise lexicographical ordering
       if (listACount != listBCount) {
@@ -7428,11 +7425,11 @@ CBORObjectTypeTextStringAscii)) {
       if (listACount != listBCount) {
         return listACount < listBCount ? -1 : 1;
       }
-      var sortedASet = new List<CBORObject>(PropertyMap.GetSortedKeys(mapA));
-      var sortedBSet = new List<CBORObject>(PropertyMap.GetSortedKeys(mapB));
+      var sortedASet = ImmutableArray.CreateRange<CBORObject>(PropertyMap.GetSortedKeys(mapA));
+      var sortedBSet = ImmutableArray.CreateRange<CBORObject>(PropertyMap.GetSortedKeys(mapB));
       // DebugUtility.Log("---done sorting");
-      listACount = sortedASet.Count;
-      _ = sortedBSet.Count;
+      listACount = sortedASet.Length;
+      _ = sortedBSet.Length;
       // Compare the keys
       /* for (var i = 0; i < listACount; ++i) {
         string str = sortedASet[i].ToString();
@@ -7538,19 +7535,19 @@ CBORObjectTypeTextStringAscii)) {
     }
 
     private static void WriteObjectArray(
-      IList<CBORObject> list,
+      ImmutableArray<CBORObject> list,
       Stream outputStream,
       CBOREncodeOptions options) {
       WriteObjectArray(list, outputStream, null, options);
     }
 
     private static void WriteObjectArray(
-      IList<CBORObject> list,
+      ImmutableArray<CBORObject> list,
       Stream outputStream,
       IList<object> stack,
       CBOREncodeOptions options) {
       object thisObj = list;
-      _ = WritePositiveInt(4, list.Count, outputStream);
+      _ = WritePositiveInt(4, list.Length, outputStream);
       foreach (CBORObject i in list) {
         stack = WriteChildObject(thisObj, i, outputStream, stack, options);
       }
