@@ -5600,30 +5600,27 @@ CBORObjectTypeTextStringAscii)) {
         if (index < 0 || index > list.Length) {
           throw new ArgumentOutOfRangeException(nameof(index));
         }
-        list.Insert( // TODO: alter the array
-          index,
-          cborObj);
+        return FromCBORImmArray(list.Insert(index, cborObj));
       } else {
         throw new InvalidOperationException("Not an array");
       }
-      return this;
     }
 
-    /// <summary>Removes all items from this CBOR array or all keys and
-    /// values from this CBOR map.</summary>
-    /// <exception cref='InvalidOperationException'>This object is not a
-    /// CBOR array or CBOR map.</exception>
-    public void Clear() {
-      if (this.Type == CBORType.Array) {
-        ImmutableArray<CBORObject> list = this.AsImmArray(); // TODO: replace with an empty array
-        list.Clear();
-      } else if (this.Type == CBORType.Map) {
-        IDictionary<CBORObject, CBORObject> dict = this.AsMap();
-        dict.Clear();
-      } else {
-        throw new InvalidOperationException("Not a map or array");
-      }
-    }
+    ///// <summary>Removes all items from this CBOR array or all keys and
+    ///// values from this CBOR map.</summary>
+    ///// <exception cref='InvalidOperationException'>This object is not a
+    ///// CBOR array or CBOR map.</exception>
+    //public void Clear() {
+    //  if (this.Type == CBORType.Array) {
+    //    ImmutableArray<CBORObject> list = this.AsImmArray(); // TODO: replace with an empty array
+    //    list.Clear();
+    //  } else if (this.Type == CBORType.Map) {
+    //    IDictionary<CBORObject, CBORObject> dict = this.AsMap();
+    //    dict.Clear();
+    //  } else {
+    //    throw new InvalidOperationException("Not a map or array");
+    //  }
+    //}
 
     /// <summary>If this object is an array, removes the first instance of
     /// the specified item (once converted to a CBOR object) from the
@@ -5642,51 +5639,51 @@ CBORObjectTypeTextStringAscii)) {
       return this.Remove(CBORObject.FromObject(obj));
     }
 
-    /// <summary>Removes the item at the given index of this CBOR
-    /// array.</summary>
-    /// <param name='index'>The index, starting at 0, of the item to
-    /// remove.</param>
-    /// <returns>Returns "true" if the object was removed. Returns "false"
-    /// if the given index is less than 0, or is at least as high as the
-    /// number of items in the array.</returns>
-    /// <exception cref='InvalidOperationException'>This object is not a
-    /// CBOR array.</exception>
-    public bool RemoveAt(int index) {
-      if (this.ItemType != CBORObjectTypeArray) {
-        throw new InvalidOperationException("Not an array");
-      }
-      if (index < 0 || index >= this.Count) {
-        return false;
-      }
-      IList<CBORObject> list = this.AsList();
-      list.RemoveAt(index);
-      return true;
-    }
+    ///// <summary>Removes the item at the given index of this CBOR
+    ///// array.</summary>
+    ///// <param name='index'>The index, starting at 0, of the item to
+    ///// remove.</param>
+    ///// <returns>Returns "true" if the object was removed. Returns "false"
+    ///// if the given index is less than 0, or is at least as high as the
+    ///// number of items in the array.</returns>
+    ///// <exception cref='InvalidOperationException'>This object is not a
+    ///// CBOR array.</exception>
+    //public bool RemoveAt(int index) {
+    //  if (this.ItemType != CBORObjectTypeArray) {
+    //    throw new InvalidOperationException("Not an array");
+    //  }
+    //  if (index < 0 || index >= this.Count) {
+    //    return false;
+    //  }
+    //  IList<CBORObject> list = this.AsList();
+    //  list.RemoveAt(index);
+    //  return true;
+    //}
 
-    /// <summary>If this object is an array, removes the first instance of
-    /// the specified item from the array. If this object is a map, removes
-    /// the item with the given key from the map.</summary>
-    /// <param name='obj'>The item or key to remove.</param>
-    /// <returns><c>true</c> if the item was removed; otherwise,
-    /// <c>false</c>.</returns>
-    /// <exception cref='ArgumentNullException'>The parameter <paramref
-    /// name='obj'/> is null (as opposed to CBORObject.Null).</exception>
-    /// <exception cref='InvalidOperationException'>The object is not an
-    /// array or map.</exception>
-    public bool Remove(CBORObject obj) {
-      if (obj == null) {
-        throw new ArgumentNullException(nameof(obj));
-      }
-      if (this.Type == CBORType.Map) {
-        IDictionary<CBORObject, CBORObject> dict = this.AsMap();
-        return PropertyMap.DictRemove(dict, obj);
-      }
-      if (this.Type == CBORType.Array) {
-        IList<CBORObject> list = this.AsList();
-        return list.Remove(obj);
-      }
-      throw new InvalidOperationException("Not a map or array");
-    }
+    ///// <summary>If this object is an array, removes the first instance of
+    ///// the specified item from the array. If this object is a map, removes
+    ///// the item with the given key from the map.</summary>
+    ///// <param name='obj'>The item or key to remove.</param>
+    ///// <returns><c>true</c> if the item was removed; otherwise,
+    ///// <c>false</c>.</returns>
+    ///// <exception cref='ArgumentNullException'>The parameter <paramref
+    ///// name='obj'/> is null (as opposed to CBORObject.Null).</exception>
+    ///// <exception cref='InvalidOperationException'>The object is not an
+    ///// array or map.</exception>
+    //public bool Remove(CBORObject obj) {
+    //  if (obj == null) {
+    //    throw new ArgumentNullException(nameof(obj));
+    //  }
+    //  if (this.Type == CBORType.Map) {
+    //    IDictionary<CBORObject, CBORObject> dict = this.AsMap();
+    //    return PropertyMap.DictRemove(dict, obj);
+    //  }
+    //  if (this.Type == CBORType.Array) {
+    //    IList<CBORObject> list = this.AsList();
+    //    return list.Remove(obj);
+    //  }
+    //  throw new InvalidOperationException("Not a map or array");
+    //}
 
     /// <summary>Maps an object to a key in this CBOR map, or adds the
     /// value if the key doesn't exist. If this is a CBOR array, instead
@@ -6853,7 +6850,7 @@ CBORObjectTypeTextStringAscii)) {
             break;
           }
         case CBORObjectTypeArray: {
-            WriteObjectArray(this.AsList(), stream, options);
+            WriteObjectArray(this.AsImmArray(), stream, options);
             break;
           }
         case CBORObjectTypeMap: {
@@ -7520,7 +7517,7 @@ CBORObjectTypeTextStringAscii)) {
         if (type == CBORObjectTypeArray) {
           stack = PushObject(stack, parentThisItem, child.ThisItem);
           child.WriteTags(outputStream);
-          WriteObjectArray(child.AsList(), outputStream, stack, options);
+          WriteObjectArray(child.AsImmArray(), outputStream, stack, options);
           stack.RemoveAt(stack.Count - 1);
         } else if (type == CBORObjectTypeMap) {
           stack = PushObject(stack, parentThisItem, child.ThisItem);
