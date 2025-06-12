@@ -7,6 +7,7 @@ licensed under the Unlicense: https://unlicense.org/
  */
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
@@ -261,7 +262,7 @@ namespace PeterO.Cbor {
         throw new ArgumentException("arbitrary-precision integer does not " +
           "fit major type 0 or 1");
       }
-      if (type == CBORObjectTypeArray && !(item is IList<CBORObject>)) {
+      if (type == CBORObjectTypeArray && !(item is ImmutableArray<CBORObject>)) {
         throw new InvalidOperationException();
       }
       #endif
@@ -277,7 +278,7 @@ namespace PeterO.Cbor {
     /// <value>The number of keys in this map, or the number of items in
     /// this array, or 0 if this item is neither an array nor a
     /// map.</value>
-    public int Count => (this.Type == CBORType.Array) ? this.AsList().Count :
+    public int Count => (this.Type == CBORType.Array) ? this.AsList().Length :
     ((this.Type == CBORType.Map) ? this.AsMap().Count : 0);
 
     /// <summary>Gets the last defined tag for this CBOR data item, or -1
@@ -471,7 +472,7 @@ namespace PeterO.Cbor {
           return PropertyMap.ReadOnlyValues(dict);
         }
         if (this.Type == CBORType.Array) {
-          IList<CBORObject> list = this.AsList();
+          ImmutableArray<CBORObject> list = this.AsList();
           return new
             System.Collections.ObjectModel.ReadOnlyCollection<CBORObject>(
               list);
@@ -525,8 +526,8 @@ namespace PeterO.Cbor {
       get
       {
         if (this.Type == CBORType.Array) {
-          IList<CBORObject> list = this.AsList();
-          return index < 0 || index >= list.Count ? throw new
+          ImmutableArray<CBORObject> list = this.AsList();
+          return index < 0 || index >= list.Length ? throw new
             ArgumentOutOfRangeException(nameof(index)) : list[index];
         }
         if (this.Type == CBORType.Map) {
@@ -538,14 +539,14 @@ namespace PeterO.Cbor {
         }
         throw new InvalidOperationException("Not an array or map");
       }
-
+      [Obsolete("Setting this value is not supported in this version of the library.")]
       set {
         if (this.Type == CBORType.Array) {
           if (value == null) {
             throw new ArgumentNullException(nameof(value));
           }
-          IList<CBORObject> list = this.AsList();
-          if (index < 0 || index >= list.Count) {
+          ImmutableArray<CBORObject> list = this.AsList();
+          if (index < 0 || index >= list.Length) {
             throw new ArgumentOutOfRangeException(nameof(index));
           }
           list[index] = value;
@@ -583,8 +584,8 @@ namespace PeterO.Cbor {
           return defaultValue;
         }
         int index = cborkey.AsNumber().ToInt32Checked();
-        IList<CBORObject> list = this.AsList();
-        return (index < 0 || index >= list.Count) ? defaultValue :
+        ImmutableArray<CBORObject> list = this.AsList();
+        return (index < 0 || index >= list.Length) ? defaultValue :
           list[index];
       }
       if (this.Type == CBORType.Map) {
@@ -613,8 +614,8 @@ namespace PeterO.Cbor {
     public CBORObject GetOrDefault(int key, CBORObject defaultValue) {
       if (this.Type == CBORType.Array) {
         int index = key;
-        IList<CBORObject> list = this.AsList();
-        return (index < 0 || index >= list.Count) ? defaultValue :
+        ImmutableArray<CBORObject> list = this.AsList();
+        return (index < 0 || index >= list.Length) ? defaultValue :
           list[index];
       }
       if (this.Type == CBORType.Map) {
@@ -703,14 +704,14 @@ namespace PeterO.Cbor {
           if (!key.AsNumber().CanFitInInt32()) {
             throw new ArgumentOutOfRangeException(nameof(key));
           }
-          IList<CBORObject> list = this.AsList();
+          ImmutableArray<CBORObject> list = this.AsList();
           int index = key.AsNumber().ToInt32Checked();
-          return index < 0 || index >= list.Count ? throw new
+          return index < 0 || index >= list.Length ? throw new
             ArgumentOutOfRangeException(nameof(key)) : list[index];
         }
         throw new InvalidOperationException("Not an array or map");
       }
-
+      [Obsolete()]
       set {
         if (key == null) {
           throw new ArgumentNullException(nameof(key));
@@ -730,9 +731,9 @@ namespace PeterO.Cbor {
           if (!key.AsNumber().CanFitInInt32()) {
             throw new ArgumentOutOfRangeException(nameof(key));
           }
-          IList<CBORObject> list = this.AsList();
+          ImmutableArray<CBORObject> list = this.AsList();
           int index = key.AsNumber().ToInt32Checked();
-          if (index < 0 || index >= list.Count) {
+          if (index < 0 || index >= list.Length) {
             throw new ArgumentOutOfRangeException(nameof(key));
           }
           list[index] = value;
@@ -2506,10 +2507,7 @@ namespace PeterO.Cbor {
       if (array == null) {
         return Null;
       }
-      IList<CBORObject> list = new List<CBORObject>();
-      foreach (CBORObject cbor in array) {
-        list.Add(cbor);
-      }
+      ImmutableArray<CBORObject> list = ImmutableArray.CreateRange(array);
       return new CBORObject(CBORObjectTypeArray, list);
     }
 
@@ -2521,13 +2519,14 @@ namespace PeterO.Cbor {
     public static CBORObject FromObject(CBORObject[] array) =>
     FromCBORArray(array);
 
-    internal static CBORObject FromArrayBackedObject(CBORObject[] array) {
-      if (array == null) {
-        return CBORObject.Null;
-      }
-      IList<CBORObject> list = PropertyMap.ListFromArray(array);
-      return new CBORObject(CBORObjectTypeArray, list);
-    }
+    /// <summary>Generates a CBOR object from an immutable array of CBOR
+    /// objects.</summary>
+    /// <param name='array'>An array of CBOR objects.</param>
+    /// <returns>A CBOR object where each element of the specified array is
+    /// copied to a new array, or CBORObject.Null if the value is
+    /// null.</returns>
+    public static CBORObject FromImmutableArray(ImmutableArray<CBORObject> array) =>
+      new(CBORObjectTypeArray, array);
 
     /// <summary>Generates a CBOR object from an array of 32-bit
     /// integers.</summary>
@@ -2539,12 +2538,11 @@ namespace PeterO.Cbor {
       if (array == null) {
         return CBORObject.Null;
       }
-      IList<CBORObject> list = new List<CBORObject>(array.Length ==
-        Int32.MaxValue ? array.Length : (array.Length + 1));
+      ImmutableArray<CBORObject>.Builder b = ImmutableArray.CreateBuilder<CBORObject>(array.Length);
       foreach (int i in array) {
-        list.Add(FromInt32(i));
+        b.Add(FromInt32(i));
       }
-      return new CBORObject(CBORObjectTypeArray, list);
+      return new CBORObject(CBORObjectTypeArray, b.MoveToImmutable());
     }
 
     /// <summary>Generates a CBOR object from an array of 64-bit
@@ -2557,12 +2555,11 @@ namespace PeterO.Cbor {
       if (array == null) {
         return CBORObject.Null;
       }
-      IList<CBORObject> list = new List<CBORObject>(array.Length ==
-        Int32.MaxValue ? array.Length : (array.Length + 1));
+      ImmutableArray<CBORObject>.Builder b = ImmutableArray.CreateBuilder<CBORObject>(array.Length);
       foreach (long i in array) {
-        list.Add(FromInt64(i));
+        b.Add(FromInt64(i));
       }
-      return new CBORObject(CBORObjectTypeArray, list);
+      return new CBORObject(CBORObjectTypeArray, b.MoveToImmutable());
     }
 
     /// <summary>Generates a CBORObject from an arbitrary object. See the
@@ -3230,14 +3227,11 @@ namespace PeterO.Cbor {
     /// <summary>Creates a new empty CBOR array.</summary>
     /// <returns>A new CBOR array.</returns>
     public static CBORObject NewArray() {
-      return new CBORObject(CBORObjectTypeArray, new List<CBORObject>());
+      return new CBORObject(CBORObjectTypeArray, ImmutableArray<CBORObject>.Empty);
     }
 
     internal static CBORObject NewArray(CBORObject o1, CBORObject o2) {
-      var list = new List<CBORObject>(2) {
-        o1,
-        o2,
-      };
+      ImmutableArray<CBORObject> list = ImmutableArray.Create(o1, o2);
       return new CBORObject(CBORObjectTypeArray, list);
     }
 
@@ -3245,11 +3239,7 @@ namespace PeterO.Cbor {
       CBORObject o1,
       CBORObject o2,
       CBORObject o3) {
-      var list = new List<CBORObject>(2) {
-        o1,
-        o2,
-        o3,
-      };
+      var list = ImmutableArray.Create(o1, o2, o3);
       return new CBORObject(CBORObjectTypeArray, list);
     }
 
@@ -7130,8 +7120,8 @@ namespace PeterO.Cbor {
       return FixedObjects[value];
     }
 
-    private IList<CBORObject> AsList() {
-      return (IList<CBORObject>)this.ThisItem;
+    private ImmutableArray<CBORObject> AsList() {
+      return (ImmutableArray<CBORObject>)this.ThisItem;
     }
 
     private IDictionary<CBORObject, CBORObject> AsMap() {

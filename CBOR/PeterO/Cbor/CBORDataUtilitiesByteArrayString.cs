@@ -247,11 +247,9 @@ namespace PeterO.Cbor {
             if (expo == 0) {
               return CBORObject.FromInt64(lv);
             } else {
-              var cbor = CBORObject.FromArrayBackedObject(
-              new CBORObject[] {
+              var cbor = CBORObject.NewArray(
                 CBORObject.FromInt32(expo),
-                CBORObject.FromInt64(lv),
-              });
+                CBORObject.FromInt64(lv));
               return cbor.WithTag(4);
             }
           }
