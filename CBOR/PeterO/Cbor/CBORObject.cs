@@ -539,7 +539,7 @@ namespace PeterO.Cbor {
         }
         throw new InvalidOperationException("Not an array or map");
       }
-      [Obsolete("Setting this value is not supported in this version of the library.")]
+      [Obsolete]
       set {
         if (this.Type == CBORType.Array) {
           if (value == null) {

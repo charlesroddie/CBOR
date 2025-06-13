@@ -694,7 +694,7 @@ namespace PeterO.Cbor {
       }
       return ret;
     }
-
+    [Obsolete]
     private static void SetCBORObject(
       CBORObject cbor,
       int[] index,
