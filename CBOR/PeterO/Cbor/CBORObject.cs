@@ -839,7 +839,7 @@ namespace PeterO.Cbor {
     /// <exception cref='ArgumentNullException'>The parameter <paramref
     /// name='data'/> is null, or the parameter <paramref name='options'/>
     /// is null.</exception>
-    public static CBORObject[] DecodeSequenceFromBytes(byte[] data,
+    public static ImmutableArray<CBORObject> DecodeSequenceFromBytes(byte[] data,
       CBOREncodeOptions options) {
       if (data == null) {
         throw new ArgumentNullException(nameof(data));
@@ -848,13 +848,13 @@ namespace PeterO.Cbor {
         throw new ArgumentNullException(nameof(options));
       }
       if (data.Length == 0) {
-        return new CBORObject[0];
+        return ImmutableArray<CBORObject>.Empty;
       }
       CBOREncodeOptions opt = options;
       if (!opt.AllowEmpty) {
         opt = new CBOREncodeOptions(opt.ToString() + ";allowempty=1");
       }
-      var cborList = new List<CBORObject>();
+      var cborList = ImmutableArray.CreateBuilder<CBORObject>();
       using (var ms = new MemoryStream(data)) {
         while (true) {
           CBORObject obj = Read(ms, opt);
@@ -864,7 +864,7 @@ namespace PeterO.Cbor {
           cborList.Add(obj);
         }
       }
-      return cborList.ToArray();
+      return cborList.ToImmutable();
     }
 
     /// <summary>Generates a list of CBOR objects from an array of bytes in
@@ -3307,11 +3307,11 @@ namespace PeterO.Cbor {
     /// <exception cref='PeterO.Cbor.CBORException'>There was an error in
     /// reading or parsing the data, including if the last CBOR object was
     /// read only partially.</exception>
-    public static CBORObject[] ReadSequence(Stream stream) {
+    public static ImmutableArray<CBORObject> ReadSequence(Stream stream) {
       if (stream == null) {
         throw new ArgumentNullException(nameof(stream));
       }
-      var cborList = new List<CBORObject>();
+      var cborList = ImmutableArray.CreateBuilder<CBORObject>();
       while (true) {
         CBORObject obj = Read(stream, AllowEmptyOptions);
         if (obj == null) {
@@ -3319,7 +3319,7 @@ namespace PeterO.Cbor {
         }
         cborList.Add(obj);
       }
-      return cborList.ToArray();
+      return cborList.ToImmutable();
     }
 
     /// <summary>
@@ -3342,7 +3342,7 @@ namespace PeterO.Cbor {
     /// <exception cref='PeterO.Cbor.CBORException'>There was an error in
     /// reading or parsing the data, including if the last CBOR object was
     /// read only partially.</exception>
-    public static CBORObject[] ReadSequence(Stream stream, CBOREncodeOptions
+    public static ImmutableArray<CBORObject> ReadSequence(Stream stream, CBOREncodeOptions
       options) {
       if (stream == null) {
         throw new ArgumentNullException(nameof(stream));
@@ -3354,7 +3354,7 @@ namespace PeterO.Cbor {
       if (!opt.AllowEmpty) {
         opt = new CBOREncodeOptions(opt.ToString() + ";allowempty=1");
       }
-      var cborList = new List<CBORObject>();
+      var cborList = ImmutableArray.CreateBuilder<CBORObject>();
       while (true) {
         CBORObject obj = Read(stream, opt);
         if (obj == null) {
@@ -3362,7 +3362,7 @@ namespace PeterO.Cbor {
         }
         cborList.Add(obj);
       }
-      return cborList.ToArray();
+      return cborList.ToImmutable();
     }
 
     /// <summary>
@@ -4297,9 +4297,9 @@ namespace PeterO.Cbor {
         output.Write(data, 0, data.Length);
         return;
       }
-      if (objValue is IList<CBORObject>) {
+      if (objValue is IList<CBORObject> data2) {
         WriteObjectArray(
-          (IList<CBORObject>)objValue,
+          ImmutableArray.ToImmutableArray<CBORObject>(data2),
           output,
           options);
         return;
@@ -4436,9 +4436,8 @@ namespace PeterO.Cbor {
     /// </example>
     public CBORObject Add(CBORObject obj) {
       if (this.Type == CBORType.Array) {
-        IList<CBORObject> list = this.AsList();
-        list.Add(obj);
-        return this;
+        ImmutableArray<CBORObject> list = this.AsList();
+        return new CBORObject((int)CBORType.Array, list.Add(obj)); // TODO: remove cast to int
       }
       throw new InvalidOperationException("Not an array");
     }
@@ -4467,14 +4466,7 @@ namespace PeterO.Cbor {
     ///  .
     /// </example>
     [RequiresUnreferencedCode("Do not use in AOT or reflection-free contexts.")]
-    public CBORObject Add(object obj) {
-      if (this.Type == CBORType.Array) {
-        IList<CBORObject> list = this.AsList();
-        list.Add(FromObject(obj));
-        return this;
-      }
-      throw new InvalidOperationException("Not an array");
-    }
+    public CBORObject Add(object obj) => Add(FromObject(obj));
 
     /// <summary>Returns false if this object is a CBOR false, null, or
     /// undefined value (whether or not the object has tags); otherwise,
@@ -4888,8 +4880,8 @@ namespace PeterO.Cbor {
           }
           case CBORObjectTypeArray: {
             cmp = ListCompare(
-                (List<CBORObject>)objA,
-                (List<CBORObject>)objB);
+                (ImmutableArray<CBORObject>)objA,
+                (ImmutableArray<CBORObject>)objB);
             break;
           }
           case CBORObjectTypeMap:
@@ -5349,7 +5341,7 @@ namespace PeterO.Cbor {
         case CBORObjectTypeArray:
           return CBORArrayEquals(
               this.AsList(),
-              otherValue.itemValue as IList<CBORObject>);
+              otherValue.itemValue as ImmutableArray<CBORObject>);
         case CBORObjectTypeTagged:
           return this.tagLow == otherValue.tagLow &&
             this.tagHigh == otherValue.tagHigh &&
@@ -7129,16 +7121,16 @@ namespace PeterO.Cbor {
     }
 
     private static bool CBORArrayEquals(
-      IList<CBORObject> listA,
-      IList<CBORObject> listB) {
+      ImmutableArray<CBORObject> listA,
+      ImmutableArray<CBORObject> listB) {
       if (listA == null) {
         return listB == null;
       }
       if (listB == null) {
         return false;
       }
-      int listACount = listA.Count;
-      int listBCount = listB.Count;
+      int listACount = listA.Length;
+      int listBCount = listB.Length;
       if (listACount != listBCount) {
         return false;
       }
@@ -7425,16 +7417,16 @@ namespace PeterO.Cbor {
     }
 
     private static int ListCompare(
-      IList<CBORObject> listA,
-      IList<CBORObject> listB) {
+      ImmutableArray<CBORObject> listA,
+      ImmutableArray<CBORObject> listB) {
       if (listA == null) {
         return (listB == null) ? 0 : -1;
       }
       if (listB == null) {
         return 1;
       }
-      int listACount = listA.Count;
-      int listBCount = listB.Count;
+      int listACount = listA.Length;
+      int listBCount = listB.Length;
       // NOTE: Compare list counts to conform
       // to bytewise lexicographical ordering
       if (listACount != listBCount) {
@@ -7614,19 +7606,19 @@ namespace PeterO.Cbor {
     }
 
     private static void WriteObjectArray(
-      IList<CBORObject> list,
+      ImmutableArray<CBORObject> list,
       Stream outputStream,
       CBOREncodeOptions options) {
       WriteObjectArray(list, outputStream, null, options);
     }
 
     private static void WriteObjectArray(
-      IList<CBORObject> list,
+      ImmutableArray<CBORObject> list,
       Stream outputStream,
       IList<object> stack,
       CBOREncodeOptions options) {
       object thisObj = list;
-      _ = WritePositiveInt(4, list.Count, outputStream);
+      _ = WritePositiveInt(4, list.Length, outputStream);
       foreach (CBORObject i in list) {
         stack = WriteChildObject(thisObj, i, outputStream, stack, options);
       }
